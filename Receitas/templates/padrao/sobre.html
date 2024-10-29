@@ -1,0 +1,30 @@
+{% extends 'padrao/modelo.html' %}
+{% load static %}
+{% block conteudo-titulo %}
+<h1>
+    Sobre o sistema.
+</h1>
+<p><span>
+        Um blog de receitas em django.
+    </span></p>
+<hr>
+<br><br>
+<div class="row">
+    <div class="col-sm-6 mb-3 mb-sm-0">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Diagrama de Caso de Uso</h5>
+          <img src="{% static 'img/caso_uso_ReceitaDeVó.png' %}" width="100" height="500" class="card-img-top" alt="diagrama de caso de uso">
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Diagrama de Classe</h5>
+          <img src="{% static 'img/classe_ReceitaDeVó.png' %}" width="100" height="500" class="card-img-top" alt="diagrama de classe">
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

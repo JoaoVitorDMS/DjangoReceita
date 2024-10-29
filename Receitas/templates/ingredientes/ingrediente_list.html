@@ -1,0 +1,13 @@
+{% extends 'padrao/modelo.html' %}
+
+{% block conteudo-titulo %}
+<h1>Adicionar Ingrediente</h1>
+{% endblock %}
+{% block conteudo %}
+        <ul>
+            {% for ingrediente in ingredientes %}
+            <li><a href="{% url 'ingrediente-detail' ingrediente.pk %}">{{ ingrediente.nome }} | {{ ingrediente.quantidade }}</a></li>
+            {% endfor %}
+        </ul>
+        <a href="{% url 'ingrediente-create' %}">Novo Ingrediente</a>
+{% endblock %}

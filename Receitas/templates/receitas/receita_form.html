@@ -1,0 +1,18 @@
+{% extends 'padrao/modelo.html' %}
+{% load crispy_forms_tags %}
+
+{% block conteudo-titulo %}
+<h1>Cadastrar Receita</h1>
+{% endblock %}
+{% block conteudo %}
+<form method="POST">
+    {% csrf_token %}
+
+    {{ form|crispy }}
+
+
+    <button type="submit" class="btn btn-success">
+        Cadastrar
+    </button>
+</form>
+{% endblock %}

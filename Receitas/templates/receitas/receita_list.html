@@ -1,0 +1,13 @@
+{% extends 'padrao/modelo.html' %}
+
+{% block conteudo-titulo %}
+<h1>Adicione Receita</h1>
+{% endblock %}
+{% block conteudo %}
+        <ul>
+            {% for receita in object_list %}
+            <li><a href="{% url 'receita-detail' receita.pk %}">{{ receita.titulo }}</a></li>
+            {% endfor %}
+        </ul>
+        <a href="{% url 'receita-create' %}">Nova Receita</a>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'padrao/modelo.html' %}
+
+{% block conteudo %}
+<h1>{{ ingrediente.nome }} | {{ingrediente.quantidade}}</h1>
+<hr>
+<a href="{% url 'ingrediente-update' ingrediente.pk %}">Editar</a> |
+<a href="{% url 'ingrediente-delete' ingrediente.pk %}">Deletar</a> |
+
+{% endblock %}

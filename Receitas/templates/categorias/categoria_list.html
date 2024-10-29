@@ -1,0 +1,13 @@
+{% extends 'padrao/modelo.html' %}
+
+{% block conteudo-titulo %}
+<h1>Adicionar Categoria</h1>
+{% endblock %}
+{% block conteudo %}
+        <ul>
+            {% for categoria in object_list %}
+            <li><a href="{% url 'categoria-detail' categoria.pk %}">{{ categoria.nome }}</a></li>
+            {% endfor %}
+        </ul>
+        <a href="{% url 'categoria-create' %}">Nova Categoria</a>
+{% endblock %}

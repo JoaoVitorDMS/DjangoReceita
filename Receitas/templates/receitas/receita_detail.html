@@ -1,0 +1,67 @@
+{% extends 'padrao/modelo.html' %}
+
+{% block conteudo %}
+<h1>{{ receita.titulo }}</h1>
+<p>{{ receita.descricao }}</p>
+<label>Autor:</label>
+<p>{{ receita.autor.username }}</p>
+<label>Categoria: </label>
+<p>{{ receita.categoria.nome }}</p>
+<ul>
+    {% for ingrediente in receita.ingredientes.all %}
+    <li>{{ ingrediente.nome }}: {{ ingrediente.quantidade }}</li>
+    {% endfor %}
+</ul>
+<label>Modo de Preparo:</label>
+<p>{{ receita.modo_preparo }}</p>
+<label>Tempo de Preparo:</label>
+<p>{{ receita.tempo_preparo }} minutos</p>
+<label>Porções:</label>
+<p>{{ receita.porcoes }}</p>
+<small>
+    <div class="row">
+        <div class="col-lg">
+            <label>Data de Publicação:</label>
+            <p>
+                {{ receita.data_publicacao }}
+                {% if receita.data_edicao > receita.data_publicacao %}
+                    - <i>Editado em {{ receita.data_edicao|date:"d/m/Y \à\s H:i:s" }}</i>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</small>
+{% if receita.imagens %}
+<img src="{{ receita.imagens.url }}" alt="{{ receita.titulo }}">
+{% endif %}
+<a href="{% url 'receita-update' receita.pk %}">Editar</a> |
+<a href="{% url 'receita-delete' receita.pk %}">Deletar</a> |
+
+<h2>Comentários</h2>
+<ul>
+    {% for avaliacao in avaliacoes %}
+    <li>
+        <strong>{{ avaliacao.usuario.username }}</strong> - {{ avaliacao.nota }}/5
+        <p>{{ avaliacao.comentario }}</p>
+        <small>{{ avaliacao.data_avaliacao }}</small>
+        {% if is_author %}
+        <form method="post" action="{% url 'responder-comentario' avaliacao.pk %}">
+            {% csrf_token %}
+            <textarea name="resposta" rows="2" cols="40"></textarea>
+            <button type="submit">Responder</button>
+        </form>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+
+{% if not is_author %}
+<h3>Adicionar Comentário</h3>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Enviar</button>
+</form>
+{% endif %}
+
+{% endblock %}

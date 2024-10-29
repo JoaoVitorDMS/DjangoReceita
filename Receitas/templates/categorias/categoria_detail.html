@@ -1,0 +1,9 @@
+{% extends 'padrao/modelo.html' %}
+
+{% block conteudo %}
+<h1>{{ categoria.nome }}</h1>
+<hr>
+<a href="{% url 'categoria-update' categoria.pk %}">Editar</a> |
+<a href="{% url 'categoria-delete' categoria.pk %}">Deletar</a> |
+
+{% endblock %}
