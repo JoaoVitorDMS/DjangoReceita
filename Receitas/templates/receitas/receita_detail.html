@@ -1,67 +1,272 @@
 {% extends 'padrao/modelo.html' %}
+{% load static %}
+{% load crispy_forms_tags %}  <!-- Add this line -->
 
 {% block conteudo %}
-<h1>{{ receita.titulo }}</h1>
-<p>{{ receita.descricao }}</p>
-<label>Autor:</label>
-<p>{{ receita.autor.username }}</p>
-<label>Categoria: </label>
-<p>{{ receita.categoria.nome }}</p>
-<ul>
-    {% for ingrediente in receita.ingredientes.all %}
-    <li>{{ ingrediente.nome }}: {{ ingrediente.quantidade }}</li>
-    {% endfor %}
-</ul>
-<label>Modo de Preparo:</label>
-<p>{{ receita.modo_preparo }}</p>
-<label>Tempo de Preparo:</label>
-<p>{{ receita.tempo_preparo }} minutos</p>
-<label>Porções:</label>
-<p>{{ receita.porcoes }}</p>
-<small>
-    <div class="row">
-        <div class="col-lg">
-            <label>Data de Publicação:</label>
-            <p>
-                {{ receita.data_publicacao }}
-                {% if receita.data_edicao > receita.data_publicacao %}
-                    - <i>Editado em {{ receita.data_edicao|date:"d/m/Y \à\s H:i:s" }}</i>
-                {% endif %}
-            </p>
+<div class="recepie_details_area">
+    <div class="container">
+        <!-- Header Section -->
+        <div class="row align-items-center mb-5">
+            <div class="col-xl-6 col-md-6">
+                <div class="recepies_thumb">
+                    {% if receita.imagem %}
+                        <img src="{{ receita.imagem.url }}" alt="{{ receita.titulo }}" class="img-fluid rounded">
+                    {% else %}
+                        <img src="{% static 'img/default-recipe.jpg' %}" alt="Imagem padrão" class="img-fluid rounded">
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-xl-6 col-md-6">
+                <div class="recepies_info">
+                    <h2 class="mb-4">{{ receita.titulo }}</h2>
+                    <p class="lead">{{ receita.descricao }}</p>
+
+                    <div class="recipe_meta_info">
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="fa fa-clock-o"></i> Tempo: {{ receita.tempo_preparo }} {% if receita.tempo_preparo == 1 %}minuto{% else %}minutos{% endif %}</li>
+                            <li class="mb-2"><i class="fa fa-folder"></i> Categoria: {{ receita.categoria.nome }}</li>
+                            <li class="mb-2"><i class="fa fa-user"></i> Por: {{ receita.autor.username }}</li>
+                            <li class="mb-2"><i class="fa fa-users"></i> Serve: {{ receita.porcoes }} porções</li>
+                        </ul>
+                    </div>
+                    <div class="average-rating mt-4">
+                        <h4>Média de Avaliações: 
+                            {% if media_avaliacoes %}
+                                {{ media_avaliacoes|floatformat:1 }} / 5
+                            {% else %}
+                                Nenhuma avaliação ainda
+                            {% endif %}
+                        </h4>
+                    </div>
+
+                    {% if user.is_authenticated and receita.autor == user %}
+                        <div class="mt-4">
+                            <a href="{% url 'receita-update' receita.pk %}" class="btn btn-primary"><i class="fa fa-edit"></i> Editar</a>
+                            <a href="{% url 'receita-delete' receita.pk %}" class="btn btn-danger"><i class="fa fa-trash"></i> Deletar</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recipe Content -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Ingredientes</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            {% for ingrediente in receita.ingredientes.all %}
+                                <li class="list-group-item">{{ ingrediente.nome }} {{ ingrediente.quantidade }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Modo de Preparo</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ receita.modo_preparo|linebreaks }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="comments-area mt-5">
+            <h3 class="mb-4">Comentários</h3>
+            
+            {% for avaliacao in avaliacoes %}
+                <div class="comment-list mb-4">
+                    <div class="single-comment">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        {% if avaliacao.usuario.profile.avatar %}
+                                            <img src="{{ avaliacao.usuario.profile.avatar.url }}" class="rounded-circle" width="50" height="50" alt="Avatar">
+                                        {% else %}
+                                            <img src="{% static 'img/comment/avatar-padrao.png' %}" class="rounded-circle" width="50" height="50" alt="Avatar Padrão">
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between">
+                                            <h5>{{ avaliacao.usuario.username }}</h5>
+                                            <div>
+                                                <div class="stars">
+                                                    {% for i in ""|ljust:avaliacao.nota %}
+                                                        <i class="fa fa-star text-warning"></i>
+                                                    {% endfor %}
+                                                </div>
+                                                {% if user == avaliacao.usuario %}
+                                                    <button class="btn btn-sm btn-link" onclick="toggleEditForm('edit-form-{{ avaliacao.pk }}')">
+                                                        <i class="fa fa-edit"></i> Editar
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div id="comment-content-{{ avaliacao.pk }}">
+                                            <p>{{ avaliacao.comentario }}</p>
+                                            <small class="text-muted">
+                                                {% if avaliacao.data_avaliacao != avaliacao.data_edicao %}
+                                                    Editado em {{ avaliacao.data_edicao|date:"d M Y" }} às {{ avaliacao.data_edicao|date:"H:i" }}
+                                                {% else %}
+                                                    {{ avaliacao.data_avaliacao|date:"d M Y" }} às {{ avaliacao.data_avaliacao|date:"H:i" }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        {% if user == avaliacao.usuario %}
+                                            <div id="edit-form-{{ avaliacao.pk }}" style="display: none;" class="mt-3">
+                                                <form method="post" action="{% url 'editar-avaliacao' avaliacao.pk %}">
+                                                    {% csrf_token %}
+                                                    <div class="form-group">
+                                                        <label>Nota:</label>
+                                                        <select name="nota" class="form-control" required>
+                                                            {% for i in "12345" %}
+                                                                <option value="{{ i }}" {% if avaliacao.nota == i|add:"0" %}selected{% endif %}>{{ i }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Comentário:</label>
+                                                        <textarea name="comentario" class="form-control" rows="3" required>{{ avaliacao.comentario }}</textarea>
+                                                    </div>
+                                                    <div class="mt-2">
+                                                        <button type="submit" class="btn btn-primary">Salvar</button>
+                                                        <button type="button" class="btn btn-secondary" onclick="toggleEditForm('edit-form-{{ avaliacao.pk }}')">Cancelar</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <p>Nenhum comentário ainda. Seja o primeiro a avaliar!</p>
+            {% endfor %}
+
+            {% if not is_author and user.is_authenticated %}
+    <div class="card shadow-sm mt-5">
+        <div class="card-body">
+            <h4 class="card-title mb-4">
+                <i class="bi bi-star-fill text-warning me-2"></i>
+                Adicionar Avaliação
+            </h4>
+            
+            <form method="post" action="{% url 'receita-detail' receita.pk %}">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <button type="submit" class="btn btn-primary">Enviar Avaliação</button>
+            </form>
         </div>
     </div>
-</small>
-{% if receita.imagens %}
-<img src="{{ receita.imagens.url }}" alt="{{ receita.titulo }}">
 {% endif %}
-<a href="{% url 'receita-update' receita.pk %}">Editar</a> |
-<a href="{% url 'receita-delete' receita.pk %}">Deletar</a> |
+        </div>
+    </div>
+</div>
 
-<h2>Comentários</h2>
-<ul>
-    {% for avaliacao in avaliacoes %}
-    <li>
-        <strong>{{ avaliacao.usuario.username }}</strong> - {{ avaliacao.nota }}/5
-        <p>{{ avaliacao.comentario }}</p>
-        <small>{{ avaliacao.data_avaliacao }}</small>
-        {% if is_author %}
-        <form method="post" action="{% url 'responder-comentario' avaliacao.pk %}">
-            {% csrf_token %}
-            <textarea name="resposta" rows="2" cols="40"></textarea>
-            <button type="submit">Responder</button>
-        </form>
-        {% endif %}
-    </li>
-    {% endfor %}
-</ul>
+<style>
+.rating-stars {
+    color: #ffc107;
+    cursor: pointer;
+}
+.rating-star {
+    margin-right: 5px;
+    transition: color 0.2s;
+}
+.rating-star.active {
+    color: #ffc107;
+}
+.rating-star:not(.active) {
+    color: #e4e5e9;
+}
 
-{% if not is_author %}
-<h3>Adicionar Comentário</h3>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Enviar</button>
-</form>
-{% endif %}
+.star-rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
 
+.star-rating input[type="radio"] {
+    display: none;
+}
+
+.star-rating label {
+    color: #ddd;
+    cursor: pointer;
+    font-size: 2em;
+    padding: 0 0.2em;
+}
+
+.star-rating input[type="radio"]:checked ~ label {
+    color: #ffd700;
+}
+
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+    color: #ffd700;
+}
+</style>
+
+<script>
+function toggleEditForm(formId) {
+    const form = document.getElementById(formId);
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.rating-star');
+    const ratingInput = document.getElementById('ratingInput');
+
+    stars.forEach(star => {
+        // Click handler
+        star.addEventListener('click', function() {
+            const rating = this.dataset.rating;
+            ratingInput.value = rating;
+            updateStars(rating);
+        });
+
+        // Hover effects
+        star.addEventListener('mouseover', function() {
+            const rating = this.dataset.rating;
+            stars.forEach(s => {
+                if (s.dataset.rating <= rating) {
+                    s.classList.remove('bi-star');
+                    s.classList.add('bi-star-fill');
+                }
+            });
+        });
+
+        star.addEventListener('mouseout', function() {
+            updateStars(ratingInput.value);
+        });
+    });
+
+    function updateStars(rating) {
+        stars.forEach(s => {
+            if (s.dataset.rating <= rating) {
+                s.classList.remove('bi-star');
+                s.classList.add('bi-star-fill', 'active');
+            } else {
+                s.classList.remove('bi-star-fill', 'active');
+                s.classList.add('bi-star');
+            }
+        });
+    }
+
+    // Initialize stars if there's an existing rating
+    if (ratingInput.value) {
+        updateStars(ratingInput.value);
+    }
+});
+</script>
 {% endblock %}

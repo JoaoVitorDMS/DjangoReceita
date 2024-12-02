@@ -31,7 +31,7 @@ class Receita(models.Model):
     autor = models.ForeignKey(User, on_delete=models.CASCADE)
     ingredientes = models.ManyToManyField(Ingrediente)
     quantidade = models.CharField(max_length=200)
-    imagens = models.ImageField(upload_to='receitas/', blank=True, null=True)
+    imagem = models.ImageField(upload_to='receitas/', blank=True, null=True)
     modo_preparo = models.TextField()
     tempo_preparo = models.IntegerField()
     porcoes = models.IntegerField()
@@ -48,3 +48,11 @@ class Avaliacao(models.Model):
     nota = models.IntegerField()
     comentario = models.TextField()
     data_avaliacao = models.DateTimeField(auto_now_add=True)
+    data_edicao = models.DateTimeField(auto_now=True)  # Add this line
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"

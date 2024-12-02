@@ -1,0 +1,5 @@
+django-crispy-forms
+crispy-bootstrap5
+django-debug-toolbar
+django-autocomplete-light
+Pillow

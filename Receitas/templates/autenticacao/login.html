@@ -24,15 +24,15 @@
                         <form method="post">
                             {% csrf_token %}
                             <div class="mb-3">
-                                <label for="username" class="form-label"><strong>Usuário*</strong></label>
-                                <input type="text" name="username" class="form-control" id="username" required>
+                                <label for="id_username">E-mail</label>
+                                <input type="email" name="username" class="form-control" id="id_username" required>
                             </div>
                             <div class="mb-3">
-                                <label for="password" class="form-label"><strong>Senha*</strong></label>
-                                <input type="password" name="password" class="form-control" id="password" required>
+                                <label for="id_password">Senha</label>
+                                <input type="password" name="password" class="form-control" id="id_password" required>
                             </div>
-                            <div class="d-flex justify-content-end">
-                                <button type="submit" class="btn btn-outline-primary">Entrar</button>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">Entrar</button>
                             </div>
                         </form>
                         {% if next %}
@@ -41,7 +41,9 @@
                     </div>
                 </div>
                 <div class="text-center mt-3">
-                    <p>Não tem uma conta? <a href="{% url 'registro' %}">Cadastre-se</a></p>
+                    <small class="text-muted">
+                        Não tem uma conta? <a href="{% url 'registro' %}">Registre-se</a>
+                    </small>
                 </div>
             </div>
         </div>

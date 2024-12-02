@@ -1,36 +1,67 @@
 {% extends 'padrao/modelo.html' %}
 {% load static %}
 {% block conteudo %}
-<div class="row">
-    <div class="col-md-4">
-        <div class="card mb-4 shadow-sm">
-            <img src="https://via.placeholder.com/150" class="card-img-top" alt="Imagem da Receita 1">
-            <div class="card-body">
-                <h5 class="card-title">Receita 1</h5>
-                <p class="card-text">Descrição breve da Receita 1.</p>
-                <a href="#" class="btn btn-primary">Ver Receita</a>
-            </div>
+<!-- area_receitas_inicio  -->
+<div class="recepie_area">
+    <div class="container">
+        <div class="row">
+            {% for receita in receitas|slice:":4" %}
+                <div class="col-xl-4 col-lg-4 col-md-6">
+                    <div class="single_recepie text-center">
+                        <div class="recepie_thumb">
+                            {% if receita.imagem %}
+                            <img src="{{ receita.imagem.url }}" alt="{{ receita.titulo }}" class="img-fluid rounded">
+                        {% else %}
+                            <img src="{% static 'img/default-recipe.jpg' %}" alt="Imagem padrão" class="img-fluid rounded">
+                        {% endif %}
+                        </div>
+                        <h3>{{ receita.titulo }}</h3>
+                        <span>{{ receita.categoria.nome }}</span>
+                        <p>Tempo Necessário: {{ receita.tempo_preparo }} {% if receita.tempo_preparo == 1 %}minuto{% else %}minutos{% endif %}</p>
+                        <a href="{% url 'receita-detail' pk=receita.pk %}" class="line_btn">Ver Receita Completa</a>
+                    </div>
+                </div>
+            {% endfor %}
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card mb-4 shadow-sm">
-            <img src="https://via.placeholder.com/150" class="card-img-top" alt="Imagem da Receita 2">
-            <div class="card-body">
-                <h5 class="card-title">Receita 2</h5>
-                <p class="card-text">Descrição breve da Receita 2.</p>
-                <a href="#" class="btn btn-primary">Ver Receita</a>
+</div>
+<!-- /area_receitas_fim  -->
+
+<!-- videos_receitas   -->
+<div class="recepie_videoes_area">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-6 col-lg-6 col-md-6">
+                <div class="recepie_info">
+                    <h3>Vídeos de receitas
+                        que não perdem
+                        nenhum detalhe</h3>
+                <p>Confira nossos vídeos com receitas deliciosas e aprenda a preparar pratos incríveis passo a passo.</p>
+                <div class="video_watch d-flex align-items-center">
+                    <a class="popup-video" href="https://youtube.com/playlist?list=PLYK5iRIrpTX5zj2P8Ak0Beyu2AFDe_Lvn&si=YOi9xfrsj6Ipdcf_"> <i class="ti-control-play"></i> </a>
+                    <div class="watch_text" >
+                        <h4>Assistir Vídeo</h4>
+                        <p>Você vai amar nossa execução</p>
+                    </div>
+                </div>
+                </div>
             </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card mb-4 shadow-sm">
-            <img src="https://via.placeholder.com/150" class="card-img-top" alt="Imagem da Receita 3">
-            <div class="card-body">
-                <h5 class="card-title">Receita 3</h5>
-                <p class="card-text">Descrição breve da Receita 3.</p>
-                <a href="#" class="btn btn-primary">Ver Receita</a>
+            <div class="col-lg-6 col-md-6">
+                <div class="videos_thumb">
+                    <div class="big_img">
+                        <img src="{% static 'img/video/big.png' %}" alt="">
+                    </div>
+                    <div class="small_thumb">
+                        <img src="{% static 'img/video/small_1.png' %}" alt="">
+                    </div>
+                    <div class="small_thumb_2">
+                        <img src="{% static 'img/video/2.png' %}" alt="">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+<!--/ videos_receitas   -->
+
 {% endblock %}
