@@ -1,6 +1,6 @@
 {% extends 'padrao/modelo.html' %}
 {% load static %}
-{% load crispy_forms_tags %}  <!-- Add this line -->
+{% load crispy_forms_tags %}
 
 {% block conteudo %}
 <div class="recepie_details_area">
@@ -10,9 +10,89 @@
             <div class="col-xl-6 col-md-6">
                 <div class="recepies_thumb">
                     {% if receita.imagem %}
-                        <img src="{{ receita.imagem.url }}" alt="{{ receita.titulo }}" class="img-fluid rounded">
+                    <div id="recipeCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+                        <div class="carousel-inner">
+                            {% if receita.imagens.all %}
+                                {% for img in receita.imagens.all %}
+                                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                        <img src="{{ img.imagem.url }}" 
+                                             class="d-block w-100 rounded" 
+                                             alt="Imagem {{ forloop.counter }} da receita {{ receita.titulo }}"
+                                             style="max-height: 500px; object-fit: cover;">
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="carousel-item active">
+                                    <img src="{% static 'img/default-recipe.jpg' %}" 
+                                         class="d-block w-100 rounded" 
+                                         alt="Imagem padrão"
+                                         style="max-height: 500px; object-fit: cover;">
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% if receita.imagens.count > 1 %}
+                            <button class="carousel-control-prev" type="button" data-bs-target="#recipeCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Anterior</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#recipeCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Próximo</span>
+                            </button>
+                            <div class="carousel-indicators">
+                                {% for img in receita.imagens.all %}
+                                    <button type="button" 
+                                            data-bs-target="#recipeCarousel" 
+                                            data-bs-slide-to="{{ forloop.counter0 }}" 
+                                            {% if forloop.first %}class="active" aria-current="true"{% endif %}
+                                            aria-label="Slide {{ forloop.counter }}">
+                                    </button>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
                     {% else %}
-                        <img src="{% static 'img/default-recipe.jpg' %}" alt="Imagem padrão" class="img-fluid rounded">
+                        <div id="recipeCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+                            <div class="carousel-inner">
+                                {% if receita.imagens.all %}
+                                    {% for img in receita.imagens.all %}
+                                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                            <img src="{{ img.imagem.url }}" 
+                                                 class="d-block w-100 rounded" 
+                                                 alt="Imagem {{ forloop.counter }} da receita {{ receita.titulo }}"
+                                                 style="max-height: 500px; object-fit: cover;">
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="carousel-item active">
+                                        <img src="{% static 'img/default-recipe.jpg' %}" 
+                                             class="d-block w-100 rounded" 
+                                             alt="Imagem padrão"
+                                             style="max-height: 500px; object-fit: cover;">
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% if receita.imagens.count > 1 %}
+                                <button class="carousel-control-prev" type="button" data-bs-target="#recipeCarousel" data-bs-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Anterior</span>
+                                </button>
+                                <button class="carousel-control-next" type="button" data-bs-target="#recipeCarousel" data-bs-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Próximo</span>
+                                </button>
+                                <div class="carousel-indicators">
+                                    {% for img in receita.imagens.all %}
+                                        <button type="button" 
+                                                data-bs-target="#recipeCarousel" 
+                                                data-bs-slide-to="{{ forloop.counter0 }}" 
+                                                {% if forloop.first %}class="active" aria-current="true"{% endif %}
+                                                aria-label="Slide {{ forloop.counter }}">
+                                        </button>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -26,13 +106,18 @@
                             <li class="mb-2"><i class="fa fa-clock-o"></i> Tempo: {{ receita.tempo_preparo }} {% if receita.tempo_preparo == 1 %}minuto{% else %}minutos{% endif %}</li>
                             <li class="mb-2"><i class="fa fa-folder"></i> Categoria: {{ receita.categoria.nome }}</li>
                             <li class="mb-2"><i class="fa fa-user"></i> Por: {{ receita.autor.username }}</li>
-                            <li class="mb-2"><i class="fa fa-users"></i> Serve: {{ receita.porcoes }} porções</li>
+                            <li class="mb-2"><i class="fa fa-users"></i> Serve:
+                                {% if receita.porcoes == 1 %}
+                                    para 1 pessoa
+                                {% else %}
+                                    para {{ receita.porcoes }} pessoas
+                                {% endif %}</li>
                         </ul>
                     </div>
                     <div class="average-rating mt-4">
                         <h4>Média de Avaliações: 
                             {% if media_avaliacoes %}
-                                {{ media_avaliacoes|floatformat:1 }} / 5
+                                {{ media_avaliacoes|floatformat:1 }} / 5,0
                             {% else %}
                                 Nenhuma avaliação ainda
                             {% endif %}
@@ -58,8 +143,16 @@
                     </div>
                     <div class="card-body">
                         <ul class="list-group list-group-flush">
-                            {% for ingrediente in receita.ingredientes.all %}
-                                <li class="list-group-item">{{ ingrediente.nome }} {{ ingrediente.quantidade }}</li>
+                            {% for ingrediente in ingredientes %}
+                                <li class="list-group-item">
+                                    {% if ingrediente.quantidade %}
+                                        {{ ingrediente.quantidade|floatformat:"-2" }} 
+                                    {% endif %}
+                                    {{ ingrediente.get_unidade_display }} 
+                                    de {{ ingrediente.ingrediente.nome }}
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item">Nenhum ingrediente cadastrado</li>
                             {% endfor %}
                         </ul>
                     </div>
@@ -173,6 +266,17 @@
         </div>
     </div>
 </div>
+
+<!-- Add masks to form inputs -->
+<script>
+    $(document).ready(function() {
+        // Máscara para tempo de preparo (formato: HH:MM)
+        $('#id_tempo_preparo').mask('00:00');
+        
+        // Máscara para quantidade de ingredientes (formato: ###,##)
+        $('.quantidade-mask').mask('000,00', {reverse: true});
+    });
+</script>
 
 <style>
 .rating-stars {

@@ -2,8 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from .views import IndexView, SobreView, ReceitaCreateView, ReceitaUpdateView, ReceitaListView, ReceitaDetailView, ReceitaDeleteView, CustomLoginView, responder_comentario, RegistroView
 from .views import CategoriaDeleteView, CategoriaCreateView, CategoriaDetailView, CategoriaListView, CategoriaUpdateView, IngredienteListView, IngredienteDetailView, IngredienteCreateView, IngredienteUpdateView, IngredienteDeleteView
-from .views import editar_avaliacao  # Add this import at the top
-
+from .views import editar_avaliacao
 urlpatterns = [
     path('', IndexView.as_view(), name="index"),
     path('sobre/', SobreView.as_view(), name="sobre"),

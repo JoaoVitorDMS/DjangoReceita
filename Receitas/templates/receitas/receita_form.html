@@ -1,18 +1,175 @@
 {% extends 'padrao/modelo.html' %}
 {% load crispy_forms_tags %}
+{% load recipe_filters %}
 
 {% block conteudo-titulo %}
 <h1>Cadastrar Receita</h1>
 {% endblock %}
 {% block conteudo %}
-<form method="POST">
-    {% csrf_token %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="text-center mb-4">{{ object.pk|yesno:"Editar,Nova" }} Receita</h2>
+                    <form method="POST" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Current Images -->
+                        {% if object and object.imagens.all %}
+                        <div class="mb-3">
+                            <label class="form-label">Imagens Atuais</label>
+                            <div class="row">
+                                {% for img in object.imagens.all %}
+                                <div class="col-md-3 mb-2">
+                                    <img src="{{ img.imagem.url }}" class="img-fluid rounded">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
 
-    {{ form|crispy }}
+                        <!-- New Images -->
+                        <div class="mb-3">
+                            <label for="id_imagens" class="form-label">Adicionar Imagens (máximo 5)</label>
+                            <input type="file" name="imagens" id="id_imagens" 
+                                   class="form-control" multiple 
+                                   accept="image/*"
+                                   {% if object.imagens.count >= 5 %}disabled{% endif %}>
+                            <div class="form-text">
+                                {% if object %}
+                                    Você pode adicionar mais {{ 5|sub:object.imagens.count }} imagens.
+                                {% else %}
+                                    Você pode adicionar até 5 imagens.
+                                {% endif %}
+                            </div>
+                        </div>
 
+                        {{ form|crispy }}
 
-    <button type="submit" class="btn btn-success">
-        Cadastrar
-    </button>
-</form>
+                        <div id="ingredientes-container">
+                            <h4>Ingredientes</h4>
+                            {% if ingredientes_existentes %}
+                                {% for ing in ingredientes_existentes %}
+                                    <div class="ingrediente-item mb-3">
+                                        <div class="row">
+                                            <div class="col-5">
+                                                <input type="text" name="ingrediente_nome_{{ forloop.counter0 }}" 
+                                                       class="form-control" value="{{ ing.ingrediente.nome }}" required>
+                                            </div>
+                                            <div class="col-3">
+                                                <input type="number" step="0.01" name="ingrediente_quantidade_{{ forloop.counter0 }}" 
+                                                       class="form-control" value="{{ ing.quantidade }}" required>
+                                            </div>
+                                            <div class="col-3">
+                                                <select name="ingrediente_unidade_{{ forloop.counter0 }}" class="form-control">
+                                                    {% for key, value in ing.UNIDADES %}
+                                                        <option value="{{ key }}" {% if ing.unidade == key %}selected{% endif %}>
+                                                            {{ value }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-1">
+                                                <button type="button" class="btn btn-danger btn-sm remover-ingrediente">
+                                                    <i class="fa fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <!-- Template para novo ingrediente -->
+                                <div class="ingrediente-item mb-3">
+                                    <div class="row">
+                                        <div class="col-5">
+                                            <input type="text" name="ingrediente_nome" class="form-control" placeholder="Nome do ingrediente">
+                                        </div>
+                                        <div class="col-3">
+                                            <input type="number" step="0.01" name="ingrediente_quantidade" class="form-control" placeholder="Quantidade">
+                                        </div>
+                                        <div class="col-3">
+                                            <select name="ingrediente_unidade" class="form-control">
+                                                <option value="kg">Quilograma</option>
+                                                <option value="g">Grama</option>
+                                                <option value="l">Litro</option>
+                                                <option value="ml">Mililitro</option>
+                                                <option value="xic">Xícara</option>
+                                                <option value="colher_sopa">Colher de Sopa</option>
+                                                <option value="colher_cha">Colher de Chá</option>
+                                                <option value="unidade">Unidade</option>
+                                                <option value="a_gosto">A gosto</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-1">
+                                            <button type="button" class="btn btn-danger btn-sm remover-ingrediente">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-success mb-3" id="adicionar-ingrediente">
+                            <i class="fa fa-plus"></i> Adicionar Ingrediente
+                        </button>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save"></i> Salvar Receita
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('adicionar-ingrediente').addEventListener('click', function() {
+    const container = document.getElementById('ingredientes-container');
+    const template = document.querySelector('.ingrediente-item').cloneNode(true);
+    const inputs = template.querySelectorAll('input, select');
+    const count = document.querySelectorAll('.ingrediente-item').length;
+    
+    inputs.forEach(input => {
+        // Atualiza os nomes dos campos para incluir o índice
+        const baseName = input.name.replace(/\[\d*\]$/, '');
+        input.name = `${baseName}_${count}`;
+        input.value = '';
+    });
+    
+    container.appendChild(template);
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('remover-ingrediente')) {
+        const items = document.querySelectorAll('.ingrediente-item');
+        if (items.length > 1) {
+            e.target.closest('.ingrediente-item').remove();
+        }
+    }
+});
+
+$(document).ready(function() {
+    // Máscaras para inputs
+    $('#id_tempo_preparo').mask('00:00');
+    
+    // Máscara para quantidades de ingredientes
+    function aplicarMascaras() {
+        $('input[name^="ingrediente_quantidade"]').mask('000,00', {reverse: true});
+    }
+    
+    // Aplicar máscaras inicialmente
+    aplicarMascaras();
+    
+    // Aplicar máscaras em novos ingredientes
+    $('#adicionar-ingrediente').click(function() {
+        setTimeout(aplicarMascaras, 100);
+    });
+});
+</script>
 {% endblock %}

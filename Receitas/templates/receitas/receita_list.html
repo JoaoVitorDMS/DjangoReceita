@@ -1,13 +1,93 @@
 {% extends 'padrao/modelo.html' %}
+{% load static %}
 
-{% block conteudo-titulo %}
-<h1>Adicione Receita</h1>
-{% endblock %}
 {% block conteudo %}
-        <ul>
-            {% for receita in object_list %}
-            <li><a href="{% url 'receita-detail' receita.pk %}">{{ receita.titulo }}</a></li>
-            {% endfor %}
-        </ul>
-        <a href="{% url 'receita-create' %}">Nova Receita</a>
+<div class="container py-5">
+    <h1 class="display-1 text-center">Suas Receitas</h1>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    {{ filter.form.titulo.label_tag }}
+                    {{ filter.form.titulo }}
+                </div>
+                <div class="col-md-4">
+                    {{ filter.form.categoria.label_tag }}
+                    {{ filter.form.categoria }}
+                </div>
+                <div class="col-md-4">
+                    {{ filter.form.tempo_preparo.label_tag }}
+                    {{ filter.form.tempo_preparo }}
+                </div>
+                <div class="col-md-4">
+                    {{ filter.form.porcoes.label_tag }}
+                    {{ filter.form.porcoes }}
+                </div>
+                <div class="col-md-4">
+                    {{ filter.form.data_publicacao.label_tag }}
+                    {{ filter.form.data_publicacao }}
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                    <a href="{% url 'receita-list' %}" class="btn btn-secondary">Limpar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <a href="{% url 'receita-create' %}" class="btn btn-outline-success"><i class="fa fa-plus"></i> Receita</a>
+    </div>
+    <div class="recepie_area">
+        <div class="container">
+            <div class="row">
+                {% for receita in receitas|slice:":4" %}
+                    <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+                        <div class="card h-100 text-center">
+                            <div class="card-header">
+                                <div class="carousel-inner">
+                                    {% if receita.imagens.all %}
+                                        {% for img in receita.imagens.all %}
+                                            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                                <img src="{{ img.imagem.url }}" 
+                                                     class="d-block w-100 rounded" 
+                                                     alt="Imagem {{ forloop.counter }} da receita {{ receita.titulo }}"
+                                                     style="max-height: 500px; object-fit: cover;">
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="carousel-item active">
+                                            <img src="{% static 'img/default-recipe.jpg' %}" 
+                                                 class="d-block w-100 rounded" 
+                                                 alt="Imagem padrão"
+                                                 style="max-height: 500px; object-fit: cover;">
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title display-3">{{ receita.titulo }}</h5>
+                                <p class="card-text"><strong>Categoria:</strong> {{ receita.categoria.nome }}</p>
+                                <p class="card-text"><strong>Tempo de Preparo:</strong> {{ receita.tempo_preparo }} {% if receita.tempo_preparo == 1 %}minuto{% else %}minutos{% endif %}</p>
+                                <p class="card-text"><strong>Porções:</strong> {% if receita.porcoes == 1 %}1 pessoa{% else %}{{ receita.porcoes }} pessoas{% endif %}</p>
+                                <p class="card-text"><strong>Avaliações:</strong> 
+                                    {% if receita.media_avaliacoes %}
+                                        {{ receita.media_avaliacoes|floatformat:1 }} / 5,0
+                                    {% else %}
+                                        Nenhuma avaliação ainda
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="card-footer">
+                                <a href="{% url 'receita-detail' pk=receita.pk %}" class="line_btn" style="text-decoration: none;">Ler Mais <i class="fa fa-angle-down"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

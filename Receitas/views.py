@@ -4,14 +4,19 @@ from django.contrib.auth import views as auth_views
 from django.http import JsonResponse
 from django.views.generic import TemplateView
 from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView
-from .models import Categoria, Receita, Ingrediente, Avaliacao, Profile
-from .forms import ReceitaForm, IngredienteForm, AvaliacaoForm, CustomUserCreationForm
+from .models import Categoria, IngredienteReceita, Receita, Ingrediente, Avaliacao, Profile, ReceitaImagem
+from .forms import ReceitaForm, IngredienteForm, AvaliacaoForm, CustomUserCreationForm, CustomAuthenticationForm
 from django.contrib.auth.forms import UserCreationForm
 from django.views import generic
 from django.views.generic.edit import FormMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import Group
 from django.db.models import Avg
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import login_required
+from .filters import ReceitaFilter, IngredienteFilter
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
 
 class RegistroView(generic.CreateView):
     form_class = CustomUserCreationForm
@@ -33,38 +38,74 @@ class RegistroView(generic.CreateView):
     
 class CustomLoginView(auth_views.LoginView):
     template_name = 'autenticacao/login.html'
+    form_class = CustomAuthenticationForm
+    
+    def get_success_url(self):
+        return reverse_lazy('index')
+
+    def form_valid(self, form):
+        login(self.request, form.get_user())
+        return super().form_valid(form)
 
 class IndexView(TemplateView):
     template_name = 'padrao/index.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['receitas'] = Receita.objects.all().order_by('-data_publicacao')[:6]  # Get latest 6 recipes
+        context['receitas'] = (Receita.objects.select_related('autor', 'categoria')
+                             .prefetch_related('ingredientes')
+                             .order_by('-data_publicacao')[:6])
         return context
 
 class SobreView(TemplateView):
     template_name = 'padrao/sobre.html'
 
-class ReceitaListView(ListView):
+class ReceitaListView(LoginRequiredMixin, ListView):
     model = Receita
     template_name = 'receitas/receita_list.html'
     context_object_name = 'receitas'
 
-class ReceitaDetailView(LoginRequiredMixin, FormMixin, DetailView):
+    def get_queryset(self):
+        queryset = (Receita.objects.select_related('autor', 'categoria')
+                   .prefetch_related('ingredientes')
+                   .order_by('-data_publicacao'))
+        self.filterset = ReceitaFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class ReceitaDetailView(FormMixin, DetailView):  # Removed LoginRequiredMixin
     model = Receita
     template_name = 'receitas/receita_detail.html'
     context_object_name = 'receita'
     form_class = AvaliacaoForm
 
+    def get_queryset(self):
+        return (Receita.objects.select_related('autor', 'categoria')
+                .prefetch_related(
+                    'ingredientereceita_set',
+                    'ingredientereceita_set__ingrediente'
+                ))
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['avaliacoes'] = Avaliacao.objects.filter(receita=self.object)
-        context['form'] = self.get_form()
-        context['is_author'] = self.object.autor == self.request.user
-        context['media_avaliacoes'] = Avaliacao.objects.filter(receita=self.object).aggregate(Avg('nota'))['nota__avg']
+        context['ingredientes'] = (self.object.ingredientereceita_set
+                                 .select_related('ingrediente')
+                                 .all())
+        avaliacoes = (Avaliacao.objects.select_related('usuario')
+                     .filter(receita=self.object))
+        context['avaliacoes'] = avaliacoes
+        context['form'] = self.get_form() if self.request.user.is_authenticated else None
+        context['is_author'] = self.request.user.is_authenticated and self.object.autor == self.request.user
+        context['media_avaliacoes'] = avaliacoes.aggregate(Avg('nota'))['nota__avg']
         return context
 
     def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
         self.object = self.get_object()
         form = self.get_form()
         if form.is_valid():
@@ -113,40 +154,123 @@ class ReceitaCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('receita-list')
 
     def form_valid(self, form):
+        # Salva a receita primeiro
         form.instance.autor = self.request.user
-        receita = form.save()
+        self.object = form.save()
         
-        nome_ingredientes = self.request.POST.getlist('ingrediente_nome')
-        unidades = self.request.POST.getlist('ingrediente_unidade')
-        quantidades = self.request.POST.getlist('ingrediente_quantidade')
+        # Handle image uploads
+        images = self.request.FILES.getlist('imagens')
+        for i, img in enumerate(images[:5]):  # Limit to 5 images
+            ReceitaImagem.objects.create(
+                receita=self.object,
+                imagem=img,
+                ordem=i
+            )
 
-        for nome, unidade, quantidade in zip(nome_ingredientes, unidades, quantidades):
-            if nome:
-                ingrediente, created = Ingrediente.objects.get_or_create(nome=nome, unidade=unidade)
-                receita.ingredientes.add(ingrediente)
+        # Processa os ingredientes do formulário
+        post_data = self.request.POST
+        indices = []
+        
+        # Encontra todos os índices de ingredientes no formulário
+        for key in post_data:
+            if key.startswith('ingrediente_nome_'):
+                index = key.split('_')[-1]
+                indices.append(index)
+        
+        # Para cada conjunto de ingrediente
+        for idx in indices:
+            nome = post_data.get(f'ingrediente_nome_{idx}')
+            quantidade = post_data.get(f'ingrediente_quantidade_{idx}')
+            unidade = post_data.get(f'ingrediente_unidade_{idx}')
+            
+            if nome and quantidade:
+                try:
+                    # Limpa o nome do ingrediente
+                    nome = nome.strip().lower()
+                    quantidade = float(quantidade)
+                    
+                    # Cria ou obtém o ingrediente
+                    ingrediente, _ = Ingrediente.objects.get_or_create(nome=nome)
+                    
+                    # Cria a relação ingrediente-receita
+                    IngredienteReceita.objects.create(
+                        receita=self.object,
+                        ingrediente=ingrediente,
+                        quantidade=quantidade,
+                        unidade=unidade
+                    )
+                except ValueError:
+                    continue  # Ignora se a quantidade não for um número válido
 
         return redirect(self.success_url)
-    
+
 class ReceitaUpdateView(LoginRequiredMixin, UpdateView):
     model = Receita
     template_name = 'receitas/receita_form.html'
     form_class = ReceitaForm
     success_url = reverse_lazy('receita-list')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Adiciona os ingredientes existentes ao contexto
+        context['ingredientes_existentes'] = self.object.ingredientereceita_set.all()
+        return context
+
+    def form_valid(self, form):
+        # Salva a receita primeiro
+        self.object = form.save()
+        
+        # Handle image uploads
+        images = self.request.FILES.getlist('imagens')
+        current_images = self.object.imagens.count()
+        
+        # Only add new images if total won't exceed 5
+        for i, img in enumerate(images[:5-current_images]):
+            ReceitaImagem.objects.create(
+                receita=self.object,
+                imagem=img,
+                ordem=current_images + i
+            )
+
+        # Remove ingredientes existentes
+        self.object.ingredientereceita_set.all().delete()
+        
+        # Processa os novos ingredientes
+        post_data = self.request.POST
+        indices = []
+        
+        for key in post_data:
+            if key.startswith('ingrediente_nome_'):
+                index = key.split('_')[-1]
+                indices.append(index)
+        
+        for idx in indices:
+            nome = post_data.get(f'ingrediente_nome_{idx}')
+            quantidade = post_data.get(f'ingrediente_quantidade_{idx}')
+            unidade = post_data.get(f'ingrediente_unidade_{idx}')
+            
+            if nome and quantidade:
+                try:
+                    nome = nome.strip().lower()
+                    quantidade = float(quantidade)
+                    ingrediente, _ = Ingrediente.objects.get_or_create(nome=nome)
+                    
+                    IngredienteReceita.objects.create(
+                        receita=self.object,
+                        ingrediente=ingrediente,
+                        quantidade=quantidade,
+                        unidade=unidade
+                    )
+                except ValueError:
+                    continue
+
+        return redirect(self.success_url)
+
 class ReceitaDeleteView(LoginRequiredMixin, DeleteView):
     model = Receita
     template_name = 'receitas/receita_confirm_delete.html'
     success_url = reverse_lazy('receita-list')
 
-
-
-# def buscar_ingredientes(request):
-#     if 'q' in request.GET:
-#         query = request.GET['q']
-#         ingredientes = Ingrediente.objects.filter(nome__icontains(query)[:10]
-#         resultados = [{'id': i.id, 'nome': i.nome} for i in ingredientes]
-#         return JsonResponse(resultados, safe=False)
-#     return JsonResponse([], safe=False)
 
 #-------------- # categoria # ------------#
 class CategoriaListView(UserPassesTestMixin, ListView):
@@ -197,6 +321,16 @@ class IngredienteListView(ListView):
     template_name = 'ingredientes/ingrediente_list.html'
     context_object_name = 'ingredientes'
 
+    def get_queryset(self):
+        queryset = Ingrediente.objects.all()
+        self.filterset = IngredienteFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
 class IngredienteDetailView(DetailView):
     model = Ingrediente
     template_name = 'ingredientes/ingrediente_detail.html'
@@ -218,6 +352,7 @@ class IngredienteUpdateView(UserPassesTestMixin, UpdateView):
     success_url = reverse_lazy('ingrediente-list')
     
     def test_func(self):
+        success_url = reverse_lazy('ingrediente-list')
         return self.request.user.is_superuser or self.request.user.groups.filter(name='Administradores').exists()
 
 class IngredienteDeleteView(UserPassesTestMixin, DeleteView):
@@ -227,3 +362,26 @@ class IngredienteDeleteView(UserPassesTestMixin, DeleteView):
     
     def test_func(self):
         return self.request.user.is_superuser or self.request.user.groups.filter(name='Administradores').exists()
+
+    
+    def test_func(self):
+        return self.request.user.is_superuser or self.request.user.groups.filter(name='Administradores').exists()
+
+class IngredienteDeleteView(UserPassesTestMixin, DeleteView):
+    model = Ingrediente
+    template_name = 'ingredientes/ingrediente_confirm_delete.html'
+    success_url = reverse_lazy('ingrediente-list')
+    
+    def test_func(self):
+        return self.request.user.is_superuser or self.request.user.groups.filter(name='Administradores').exists()
+
+@login_required
+def remover_imagem(request, pk):
+    imagem = get_object_or_404(ReceitaImagem, pk=pk)
+    receita = receita.imagem
+        
+    if request.user == receita.autor:
+        imagem.delete()
+    
+    return redirect('receita-detail', pk=receita.pk)
+

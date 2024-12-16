@@ -1,13 +1,31 @@
 {% extends 'padrao/modelo.html' %}
+{% load static %}
 
-{% block conteudo-titulo %}
-<h1>Adicionar Ingrediente</h1>
-{% endblock %}
 {% block conteudo %}
-        <ul>
-            {% for ingrediente in ingredientes %}
-            <li><a href="{% url 'ingrediente-detail' ingrediente.pk %}">{{ ingrediente.nome }} | {{ ingrediente.quantidade }}</a></li>
-            {% endfor %}
-        </ul>
-        <a href="{% url 'ingrediente-create' %}">Novo Ingrediente</a>
+<div class="container py-5">
+    <h1 class="display-1 text-center">Lista de Ingredientes</h1>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    {{ filter.form.nome.label_tag }}
+                    {{ filter.form.nome }}
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                    <a href="{% url 'ingrediente-list' %}" class="btn btn-secondary">Limpar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Ingredientes -->
+    <div class="row">
+        {% for ingrediente in ingredientes %}
+            <!-- ... existing ingredient card code ... -->
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}
